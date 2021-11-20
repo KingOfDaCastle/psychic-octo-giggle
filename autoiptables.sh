@@ -6,6 +6,7 @@ do
         sudo iptables -P "${chain}" ACCEPT
 done
 sudo iptables -t filter -F
+sudo iptables -t nat -F
 
 # INPUT Chain
 sudo iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
@@ -58,7 +59,7 @@ then
         else
                 read -p "Which TCP OUTPUT port do you want open? " TCPPORT
                 sudo iptables -A OUTPUT -p tcp  --dport ${TCPPORT} -m conntrack --ctstate NEW -j ACCEPT
-	fi
+        fi
 fi
 
 read -p "How many UDP OUTPUT ports do you want open? " NUMUDPPORTS
@@ -80,15 +81,21 @@ read -p "Do you want to configure forwarding rules? (Y/n) " answer
 if [ "${answer}" = 'n' ] || [ "${answer}" = 'N' ];
 then 
 
-	echo " No forwarding rules configured "
+	echo " No forwarding rules configured"
 
 else
 
 	sudo iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 	sudo iptables -A FORWARD -m conntrack --ctstate INVALID -j DROP
+	echo "Available Interfaces:"
+	ip a | grep mtu | awk '{print $2}' | cut -d ':' -f1 | grep -v lo
 	read -p "Eneter tunnel interface name " input
+	echo "Available Interfaces:"
+	ip a | grep mtu | awk '{print $2}' | cut -d ':' -f1 | grep -v lo
 	read -p "Enter outbound interface " outbound
-	read -p "Enter tunnel network (x.x.x.x/xx) " tunNet
+	echo "Available Interfaces:"
+	ip a | grep mtu | awk '{print $2}' | cut -d ':' -f1 | grep -v lo
+	tunNet=$(ip r | grep ${input} | cut -d ' ' -f1)
 	sudo iptables -A FORWARD -i ${input} -o ${outbound} -s ${tunNet} -m comment --comment "Allow new traffic from VPN subnet to internet" -j ACCEPT
 	sudo iptables -A FORWARD -j LOG --log-prefix "iptables forward dropped: "
 	sudo iptables -t nat -A POSTROUTING -s ${tunNet} -o ${outbound} -j MASQUERADE
@@ -104,4 +111,5 @@ done
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
 sudo apt install iptables-persistent -y
-sudo iptables-save | sudo tee /etc/iptables/rules.ipv4clear
+sudo iptables-save | sudo tee /etc/iptables/rules.ipv4
+
