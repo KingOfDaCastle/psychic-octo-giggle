@@ -73,6 +73,27 @@ then
                 sudo iptables -A OUTPUT -p udp  --dport ${UDPPORT} -j ACCEPT
         fi
 fi
+
+read -p "Do you want to configure forwarding rules? (Y/n) " -n1 answer
+
+if [ ${answer} = 'n' ] || [ ${answer} = 'N' ]
+then 
+
+	echo " No forwarding rules configured"
+
+else
+
+	sudo iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+	sudo iptables -A FORWARD -m conntrack --ctstate INVALID -j DROP
+	read -p "Eneter tunnel interface name " input
+	read -p "Enter outbound interface " outbound
+	read -p "Enter tunnel network (x.x.x.x/xx) " tunNet
+	sudo iptables -A FORWARD -i ${input} -o ${outbound} -s ${tunNet} -m comment --comment "Allow new traffic from VPN subnet to internet" -j ACCEPT
+	sudo iptables -A FORWARD -j LOG --log-prefix "iptables forward dropped: "
+	sudo iptables -t nat -A POSTROUTING -s ${tunNet} -o ${outbound} -j MASQUERADE
+
+fi
+
 # Default Policies
 for chain in INPUT OUTPUT FORWARD
 do
