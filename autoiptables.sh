@@ -58,6 +58,7 @@ then
         else
                 read -p "Which TCP OUTPUT port do you want open? " TCPPORT
                 sudo iptables -A OUTPUT -p tcp  --dport ${TCPPORT} -m conntrack --ctstate NEW -j ACCEPT
+	fi
 fi
 
 read -p "How many UDP OUTPUT ports do you want open? " NUMUDPPORTS
@@ -74,12 +75,12 @@ then
         fi
 fi
 
-read -p "Do you want to configure forwarding rules? (Y/n) " -n1 answer
+read -p "Do you want to configure forwarding rules? (Y/n) " answer
 
-if [ ${answer} = 'n' ] || [ ${answer} = 'N' ]
+if [ "${answer}" = 'n' ] || [ "${answer}" = 'N' ];
 then 
 
-	echo " No forwarding rules configured"
+	echo " No forwarding rules configured "
 
 else
 
