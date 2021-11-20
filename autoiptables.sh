@@ -57,12 +57,7 @@ then
 
         else
                 read -p "Which TCP OUTPUT port do you want open? " TCPPORT
-                sudo iptables -A OUTPUT -p tcp -m multiport  --dports ${TCPPORT} -m conntrack --ctstate NEW -j ACCEPT
-
-        else
-                read -p "Which TCP OUTPUT port do you want open? " TCPPORT
                 sudo iptables -A OUTPUT -p tcp  --dport ${TCPPORT} -m conntrack --ctstate NEW -j ACCEPT
-        fi
 fi
 
 read -p "How many UDP OUTPUT ports do you want open? " NUMUDPPORTS
