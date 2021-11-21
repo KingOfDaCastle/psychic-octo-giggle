@@ -27,7 +27,6 @@ then
                 sudo iptables -A INPUT -p tcp  --dport ${TCPPORT} -m conntrack --ctstate NEW -j ACCEPT
         fi
 fi
-
 read -p "How many UDP INPUT ports do you want open? " NUMUDPPORTS
 if [ "${NUMUDPPORTS}" -ne 0 ]
 then
@@ -41,7 +40,7 @@ then
                 sudo iptables -A INPUT -p udp  --dport ${UDPPORT} -j ACCEPT
         fi
 fi
-
+sudo iptables -A INPUT -j LOG --log-prefix "iptables INPUT dropped: "
 # OUTPUT Chain
 sudo iptables -A OUTPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 sudo iptables -A OUTPUT -m conntrack --ctstate INVALID -j DROP
@@ -75,7 +74,7 @@ then
                 sudo iptables -A OUTPUT -p udp  --dport ${UDPPORT} -j ACCEPT
         fi
 fi
-
+sudo iptables -A OUTPUT -j LOG --log-prefix "iptables OUTPUT dropped: "
 read -p "Do you want to configure forwarding rules? (Y/n) " answer
 
 if [ "${answer}" = 'n' ] || [ "${answer}" = 'N' ];
@@ -100,6 +99,14 @@ else
 	sudo iptables -A FORWARD -j LOG --log-prefix "iptables forward dropped: "
 	sudo iptables -t nat -A POSTROUTING -s ${tunNet} -o ${outbound} -j MASQUERADE
 
+fi
+
+read -p "Do you want to forward IPv4? (Y/n) " answer
+if [ "${answer}" = 'n' ] || [ "${answer}" = 'N' ];
+then
+	echo "IPv4 forwarding NOT enabled"
+else
+	sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf && sudo sysctl -p
 fi
 
 # Default Policies
