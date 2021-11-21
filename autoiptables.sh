@@ -110,7 +110,7 @@ else
 fi
 
 # Default Policies
-for chain in INPUT OUTPUT FORWARD
+for chain in INPUT OUTPUT
 do
         sudo iptables -P "${chain}" DROP
 done
