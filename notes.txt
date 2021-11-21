@@ -1,0 +1,126 @@
+
+tee -a ~/.ssh/config << EOF
+Host $host
+     Hostname $IP
+     User $user
+     IdentityFile $ident
+     Port $port
+EOF
+
+
+cd ~/.ssh
+ssh-keygen -t rsa -N "" -f $ident
+ssh-copy-id -p $port $user@$IP
+
+####################################################
+
+
+
+sudo tee -a /etc/fail2ban/jail.d/defaults-debian.conf << EOF
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 120
+banaction = iptables-allports
+EOF
+
+
+##############################################################
+sudo tee /etc/netplan/00-installer-config.yaml << EOF
+network:
+  ethernets:
+    ens33:
+#       dhcp4: true
+      addresses:
+      - 192.168.55.50/24
+      gateway4: 192.168.55.2
+      nameservers:
+        addresses:
+        - 1.1.1.1
+  version: 2
+EOF
+############################################################
+sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="ipv6.disable=1 /g' /etc/default/grub
+sudo update-grub
+########################################################################################################
+sshport=20022
+sudo sed -i "s/#Port 22/Port ${sshport}/g" /etc/ssh/sshd_config
+sudo systemctl restart ssh
+###########################################################################################################
+
+##############################################################################################################
+sudo iptables-restore /etc/iptables/rules.ipv4
+
+##################################################################################################Server config
+##################################################################################################
+read -p "Enter server name " servName
+read -p "Enter tun name " tunName
+read -p "Enter topology type (p2p or subnet) " topType
+sudo mkdir -p /etc/openvpn/${servName}-jail/tmp
+sudo chmod 1777 /etc/openvpn/${servName}-jail/tmp
+
+if [ ${topType} = 'p2p' ]
+then		
+	read -p "Enter server address " serverIP
+	read -p "Enter client address " clientIP	
+	sudo tee /etc/openvpn/${servName}-server.conf << EOF
+	dev-type tun
+	dev ${tunName}
+	topology p2p
+	ifconfig ${serverIP} ${clientIP}
+	EOF
+else
+	read -p "Enter tunnel network IP " networkIP
+	read -p "Enter tunnel network netmask " mask	
+	sudo tee /etc/openvpn/${servName}-server.conf << EOF
+	dev-type tun
+	dev ${tunName}
+	topology subnet
+	server ${networkIP} ${mask}
+	EOF
+fi
+
+sudo tee -a /etc/openvpn/${servName}-server.conf << EOF
+log ${servName}-server.log
+cipher AES-128-GCM
+ncp-ciphers AES-128-GCM:AES-128-CBC
+keepalive 10 60
+dh none
+verb 4
+auth SHA256
+tls-server
+port 443
+proto tcp-server
+remote-cert-tls client
+verify-x509-name ${servName}-client name-prefix
+user nobody
+group nogroup
+persist-key
+persist-tun
+chroot ${servName}-jail
+tls-cipher TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384
+tls-version-min 1.3 or-highest
+push "redirect-gateway def1"
+EOF
+#######################################################################################
+Client config
+#######################################################################################
+
+read -p "Enter server name " servName
+read -p "Enter tun name " tunName
+
+dev-type tun
+dev ${tunName}
+port 443
+client
+remote x.x.x.x
+nobind
+log jacket-client.log
+verb 4
+auth SHA256
+keepalive 10 60
+proto tcp-client
+remote-cert-tls server
+cipher AES-128-GCM
+verify-x509-name jacket-server name
