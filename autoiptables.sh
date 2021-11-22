@@ -118,5 +118,5 @@ done
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
 sudo apt install iptables-persistent -y
-sudo iptables-save | sudo tee /etc/iptables/rules.ipv4
+sudo iptables-save | sudo tee /etc/iptables/rules.v4
 
